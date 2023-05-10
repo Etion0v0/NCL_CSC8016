@@ -33,7 +33,7 @@ public class RainforestShop {
      * @return  Your student id!
      */
     public String studentId() {
-        return "012345678";
+        return "c1028870";
     }
 
 
@@ -96,7 +96,13 @@ public class RainforestShop {
      */
     boolean logout(Transaction transaction) {
         boolean result = false;
-        // TODO: Implement the remaining part!
+        if(transaction.getSelf() != null && (transaction.getUuid() != null)){
+            if(UUID_to_user.containsKey(transaction.getUuid())){
+                result = true;
+                UUID_to_user.remove(transaction.getUuid());
+            }
+        }
+        // TODO: Implement the remaining part! ##temply done!!!
         return result;
     }
 
@@ -121,6 +127,7 @@ public class RainforestShop {
     Optional<Item> basketProductByName(Transaction transaction, String name) {
         AtomicReference<Optional<Item>> result = new AtomicReference<>(Optional.empty());
         if (transaction.getSelf() == null || (transaction.getUuid() == null)) return result.get();
+
         // TODO: Implement the remaining part!
         return result.get();
     }
