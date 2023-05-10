@@ -100,6 +100,8 @@ public class RainforestShop {
             if(UUID_to_user.containsKey(transaction.getUuid())){
                 result = true;
                 UUID_to_user.remove(transaction.getUuid());
+
+
             }
         }
         // TODO: Implement the remaining part! ##temply done!!!
@@ -128,6 +130,17 @@ public class RainforestShop {
         AtomicReference<Optional<Item>> result = new AtomicReference<>(Optional.empty());
         if (transaction.getSelf() == null || (transaction.getUuid() == null)) return result.get();
 
+        if (!available_withdrawn_products.containsKey(name)) return result.get();
+
+        if (!UUID_to_user.containsKey(transaction.getUuid())) return result.get();
+
+        ProductMonitor monitor = available_withdrawn_products.get(name);
+
+        synchronized (monitor){
+
+            result.set(monitor.getAvailableItem());
+        }
+
         // TODO: Implement the remaining part!
         return result.get();
     }
@@ -142,6 +155,17 @@ public class RainforestShop {
     boolean shelfProduct(Transaction transaction, Item object) {
         boolean result = false;
         if (transaction.getSelf() == null || (transaction.getUuid() == null)) return false;
+
+        if (!available_withdrawn_products.containsKey(object.productName)) return false;
+
+        if (!UUID_to_user.containsKey(transaction.getUuid())) return false;
+
+        ProductMonitor monitor = available_withdrawn_products.get(object.productName);
+
+        synchronized (monitor) {
+            monitor.doShelf(object);
+            result = true;
+        }
         // TODO: Implement the remaining part!
         return result;
     }
