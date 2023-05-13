@@ -5,10 +5,12 @@ import uk.ncl.CSC8016.jackbergus.coursework.project2.utils.Item;
 import uk.ncl.CSC8016.jackbergus.coursework.project2.utils.MyUUID;
 import uk.ncl.CSC8016.jackbergus.slides.semaphores.scheduler.Pair;
 
+import javax.management.monitor.Monitor;
 import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 public class RainforestShop {
@@ -99,13 +101,17 @@ public class RainforestShop {
         if(transaction.getSelf() != null && (transaction.getUuid() != null)){
             if(UUID_to_user.containsKey(transaction.getUuid())){
                 result = true;
-
                 List<Item> items = transaction.getUnmutableBasket();
                 for (Item item : items){
                     this.shelfProduct(transaction,item);
                 }
                 transaction.clearBasket();
-                UUID_to_user.remove(transaction.getUuid());
+                for (Map.Entry<UUID, String> entry : UUID_to_user.entrySet()) {
+                    if (entry.getValue().equals(transaction.getUsername())) {
+                        UUID_to_user.remove(transaction.getUuid());
+                    }
+                }
+
             }
         }
         // TODO: Implement the remaining part! ##temply done!!! 做一个清除退出账号购物车的功能
@@ -119,7 +125,12 @@ public class RainforestShop {
      */
     List<String> getAvailableItems(Transaction transaction) {
         List<String> ls = Collections.emptyList();
-
+        Collection<ProductMonitor> monitors = this.available_withdrawn_products.values();
+        for (ProductMonitor monitor :monitors){
+            synchronized (monitor){
+                ls.addAll(monitor.getAvailableItems());
+            }
+        }
         // TODO: Implement the remaining part!
         return ls;
     }
