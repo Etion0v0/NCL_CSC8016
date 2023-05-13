@@ -119,6 +119,7 @@ public class RainforestShop {
      */
     List<String> getAvailableItems(Transaction transaction) {
         List<String> ls = Collections.emptyList();
+
         // TODO: Implement the remaining part!
         return ls;
     }
