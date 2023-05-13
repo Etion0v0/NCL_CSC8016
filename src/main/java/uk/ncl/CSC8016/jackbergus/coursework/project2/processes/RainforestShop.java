@@ -99,12 +99,16 @@ public class RainforestShop {
         if(transaction.getSelf() != null && (transaction.getUuid() != null)){
             if(UUID_to_user.containsKey(transaction.getUuid())){
                 result = true;
+
+                List<Item> items = transaction.getUnmutableBasket();
+                for (Item item : items){
+                    this.shelfProduct(transaction,item);
+                }
+                transaction.clearBasket();
                 UUID_to_user.remove(transaction.getUuid());
-
-
             }
         }
-        // TODO: Implement the remaining part! ##temply done!!!
+        // TODO: Implement the remaining part! ##temply done!!! 做一个清除退出账号购物车的功能
         return result;
     }
 
@@ -159,6 +163,8 @@ public class RainforestShop {
         if (!available_withdrawn_products.containsKey(object.productName)) return false;
 
         if (!UUID_to_user.containsKey(transaction.getUuid())) return false;
+
+        if(!transaction.getUnmutableBasket().contains(object)) return false;
 
         ProductMonitor monitor = available_withdrawn_products.get(object.productName);
 
