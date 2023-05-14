@@ -197,6 +197,10 @@ public class RainforestShop {
      */
     public void supplierStopped(AtomicBoolean stopped) {
         // TODO: Provide a correct concurrent implementation!
+        if(!supplierStopped){
+            supplierStopped = true;
+            notify();
+        }
         supplierStopped = true;
         stopped.set(true);
     }
@@ -209,7 +213,7 @@ public class RainforestShop {
      * @return
      */
     public String getNextMissingItem() {
-
+        if(!supplierStopped)notify();
         // TODO: Provide a correct concurrent implementation!
         supplierStopped = false;
         String item = null;
@@ -222,6 +226,7 @@ public class RainforestShop {
                         // 处理中断异常
                     }
                 } else {
+                    supplierStopped = true;
                     item = currentEmptyItem.poll(); // 获取并移除队列头部的元素，如果队列为空，则返回null
                     if (!item.equals("@stop!")) {
                         return item;
@@ -287,7 +292,6 @@ public class RainforestShop {
                         s.add(k);
                 }
                 currentEmptyItem.addAll(s);
-                notify();
             }
             result = new BasketResult(currentlyPurchasable, currentlyUnavailable, total_available_money, total_cost, total_available_money- total_cost);
         }
