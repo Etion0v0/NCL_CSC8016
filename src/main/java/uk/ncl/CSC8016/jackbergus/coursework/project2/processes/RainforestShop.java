@@ -5,12 +5,10 @@ import uk.ncl.CSC8016.jackbergus.coursework.project2.utils.Item;
 import uk.ncl.CSC8016.jackbergus.coursework.project2.utils.MyUUID;
 import uk.ncl.CSC8016.jackbergus.slides.semaphores.scheduler.Pair;
 
-import javax.management.monitor.Monitor;
 import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 public class RainforestShop {
@@ -101,17 +99,13 @@ public class RainforestShop {
         if(transaction.getSelf() != null && (transaction.getUuid() != null)){
             if(UUID_to_user.containsKey(transaction.getUuid())){
                 result = true;
+
                 List<Item> items = transaction.getUnmutableBasket();
                 for (Item item : items){
                     this.shelfProduct(transaction,item);
                 }
                 transaction.clearBasket();
-                for (Map.Entry<UUID, String> entry : UUID_to_user.entrySet()) {
-                    if (entry.getValue().equals(transaction.getUsername())) {
-                        UUID_to_user.remove(transaction.getUuid());
-                    }
-                }
-
+                UUID_to_user.remove(transaction.getUuid());
             }
         }
         // TODO: Implement the remaining part! ##temply done!!! 做一个清除退出账号购物车的功能
@@ -125,10 +119,9 @@ public class RainforestShop {
      */
     List<String> getAvailableItems(Transaction transaction) {
         List<String> ls = Collections.emptyList();
-        Collection<ProductMonitor> monitors = this.available_withdrawn_products.values();
-        for (ProductMonitor monitor :monitors){
-            synchronized (monitor){
-                ls.addAll(monitor.getAvailableItems());
+        synchronized (available_withdrawn_products) {
+            for (ProductMonitor pm : available_withdrawn_products.values()) {
+                ls.addAll( Collections.unmodifiableSet(pm.getAvailableItems()));
             }
         }
         // TODO: Implement the remaining part!
@@ -192,8 +185,10 @@ public class RainforestShop {
      * Stops the food supplier by sending a specific message. Please observe that no product shall be named @stop!
      */
     public void stopSupplier() {
-        // TODO: Provide a correct concurrent implementation!
-        currentEmptyItem.add("@stop!");
+        synchronized (currentEmptyItem) {
+            currentEmptyItem.add("@stop!");
+            currentEmptyItem.notifyAll();
+        }
     }
 
     /**
@@ -214,10 +209,30 @@ public class RainforestShop {
      * @return
      */
     public String getNextMissingItem() {
+
         // TODO: Provide a correct concurrent implementation!
         supplierStopped = false;
-        while (currentEmptyItem.isEmpty());
-        return currentEmptyItem.remove();
+        String item = null;
+        synchronized (currentEmptyItem) {
+            while (!supplierStopped) {
+                if (currentEmptyItem.isEmpty()) {
+                    try {
+                        currentEmptyItem.wait();
+                    } catch (InterruptedException e) {
+                        // 处理中断异常
+                    }
+                } else {
+                    item = currentEmptyItem.poll(); // 获取并移除队列头部的元素，如果队列为空，则返回null
+                    if (!item.equals("@stop!")) {
+                        return item;
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+        return item;
+
     }
 
 
@@ -272,6 +287,7 @@ public class RainforestShop {
                         s.add(k);
                 }
                 currentEmptyItem.addAll(s);
+                notify();
             }
             result = new BasketResult(currentlyPurchasable, currentlyUnavailable, total_available_money, total_cost, total_available_money- total_cost);
         }
