@@ -152,10 +152,7 @@ public class RainforestShop {
 
         ProductMonitor monitor = available_withdrawn_products.get(name);
 
-        synchronized (monitor){
-
-            result.set(monitor.getAvailableItem());
-        }
+        result.set(monitor.getAvailableItem());
 
         // TODO: Implement the remaining part!
         return result.get();
@@ -180,12 +177,9 @@ public class RainforestShop {
 
         ProductMonitor monitor = available_withdrawn_products.get(object.productName);
 
-        synchronized (monitor) {
-            monitor.doShelf(object);
-            result = true;
-        }
+        return monitor.doShelf(object);
+
         // TODO: Implement the remaining part!
-        return result;
     }
 
     /**
