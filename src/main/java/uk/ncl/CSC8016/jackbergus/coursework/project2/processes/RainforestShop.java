@@ -195,7 +195,6 @@ public class RainforestShop {
         lock.lock();
         try {
             currentEmptyItem.add("@stop!");
-            condition.signalAll();
         } finally {
             lock.unlock();
         }
@@ -226,21 +225,11 @@ public class RainforestShop {
      * @return
      */
     public String getNextMissingItem() {
-        if (!supplierStopped) {
-            lock.lock();
-            try {
-                if (!supplierStopped) {
-                    supplierStopped = true;
-                    condition.signalAll();
-                }
-            } finally {
-                lock.unlock();
-            }
-        }
-
+        supplierStopped = false;
         lock.lock();
         try {
             while (currentEmptyItem.isEmpty()) {
+                if (supplierStopped) break;
                 try {
                     condition.await();
                 } catch (InterruptedException e) {
