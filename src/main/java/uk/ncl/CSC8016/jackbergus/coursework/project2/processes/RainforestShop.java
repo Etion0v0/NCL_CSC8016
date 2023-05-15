@@ -11,10 +11,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
 public class RainforestShop {
 
     /// For correctly implementing the server, pelase consider that
-
+    private final Lock lock = new ReentrantLock();
+    private final Condition condition = lock.newCondition();
     private final boolean isGlobalLock;
     private boolean supplierStopped;
     private Set<String> allowed_clients;
@@ -119,10 +124,12 @@ public class RainforestShop {
      */
     List<String> getAvailableItems(Transaction transaction) {
         List<String> ls = Collections.emptyList();
-        synchronized (available_withdrawn_products) {
+        List<String> res = new ArrayList<>();
+        if (available_withdrawn_products != null) {
             for (ProductMonitor pm : available_withdrawn_products.values()) {
-                ls.addAll( Collections.unmodifiableSet(pm.getAvailableItems()));
+                res.addAll( Collections.unmodifiableSet(pm.getAvailableItems()));
             }
+            return res;
         }
         // TODO: Implement the remaining part!
         return ls;
@@ -185,9 +192,12 @@ public class RainforestShop {
      * Stops the food supplier by sending a specific message. Please observe that no product shall be named @stop!
      */
     public void stopSupplier() {
-        synchronized (currentEmptyItem) {
+        lock.lock();
+        try {
             currentEmptyItem.add("@stop!");
-            currentEmptyItem.notifyAll();
+            condition.signalAll();
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -196,12 +206,15 @@ public class RainforestShop {
      * @param stopped   Boolean variable from the supplier
      */
     public void supplierStopped(AtomicBoolean stopped) {
-        // TODO: Provide a correct concurrent implementation!
-        if(!supplierStopped){
-            supplierStopped = true;
-            notify();
+        lock.lock();
+        try {
+            if (!supplierStopped) {
+                supplierStopped = true;
+                condition.signalAll();
+            }
+        } finally {
+            lock.unlock();
         }
-        supplierStopped = true;
         stopped.set(true);
     }
 
@@ -213,31 +226,32 @@ public class RainforestShop {
      * @return
      */
     public String getNextMissingItem() {
-        if(!supplierStopped)notify();
-        // TODO: Provide a correct concurrent implementation!
-        supplierStopped = false;
-        String item = null;
-        synchronized (currentEmptyItem) {
-            while (!supplierStopped) {
-                if (currentEmptyItem.isEmpty()) {
-                    try {
-                        currentEmptyItem.wait();
-                    } catch (InterruptedException e) {
-                        // 处理中断异常
-                    }
-                } else {
+        if (!supplierStopped) {
+            lock.lock();
+            try {
+                if (!supplierStopped) {
                     supplierStopped = true;
-                    item = currentEmptyItem.poll(); // 获取并移除队列头部的元素，如果队列为空，则返回null
-                    if (!item.equals("@stop!")) {
-                        return item;
-                    } else {
-                        break;
-                    }
+                    condition.signalAll();
                 }
+            } finally {
+                lock.unlock();
             }
         }
-        return item;
 
+        lock.lock();
+        try {
+            while (currentEmptyItem.isEmpty()) {
+                try {
+                    condition.await();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    // 处理中断异常
+                }
+            }
+            return currentEmptyItem.remove();
+        } finally {
+            lock.unlock();
+        }
     }
 
 
